@@ -3,6 +3,7 @@ LIB_E 		= $(CCODES)/utilitarios-em-c/bin/static
 LIB_C 		= $(CCODES)/utilitarios-em-c/bin/shared
 HEADERS 		= $(CCODES)/utilitarios-em-c/include
 DESTINO 		= lib/
+COMPILER		= g++
 
 codigos 		= progresso led monitor
 objetos 		= auxiliar progresso led monitor
@@ -76,18 +77,23 @@ comunicacao-test: entrada-obj
 	clang++ -o bin/ut_comunicacao build/comunicacao-test.o build/entrada.o \
 		-lcurses
 
+obj-painel-debug:
+	@$(COMPILER) -g3 -O0 -Wall -c -o build/painel-debug.o src/painel.cpp
+	@echo "Objeto do módulo painel gerado em 'build'."
 # --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --
-debug:
-	clang++ -D__unit_tests__ -g3 -O0 -Wall \
+debug: obj-painel-debug
+	@$(COMPILER) -D__unit_tests__ -g3 -O0 -Wall \
 		-c -o build/painel-debug.o src/painel.cpp
-	clang++ -g3 -O0 -Wall -D__unit_tests__ -D__debug__ \
+	@echo "Objeto do módulo 'painel' compilado."
+	@$(COMPILER) -g3 -O0 -Wall -D__unit_tests__ -D__debug__ \
 		-c -o build/main-debug.o src/main.cpp
-	clang++ -v -o bin/debug			\
+	@echo "Objeto do 'main' compilado em 'build'."
+	$(COMPILER) -O0 -o bin/debug	\
 		build/main-debug.o			\
 		build/painel-debug.o			\
 		build/entrada.o				\
 		build/comunicacao.o			\
-			-lcurses
+		-lcurses
 
 release: cria-dirs-do-projeto entrada-obj comunicacao-obj
 	@clang++ -Ilib/ -O3 -Oz -Wall							\
@@ -115,10 +121,10 @@ run-release:
 demonstracoes = verificador_de_injecao injetor_de_entradas
 
 servidor_injetor:
-	g++ -o bin/demos/$@ src/demo/$@.cpp \
+	$(COMPILER) -o bin/demos/$@ src/demo/$@.cpp \
 		build/comunicacao.o build/entrada.o -lcurses
-cliente_receptor:
-	clang++ -o bin/demos/$@ src/demo/$@.cpp \
+cliente-receptor:
+	$(COMPILER) -o bin/demos/$@ src/demo/$@.cpp \
 		build/comunicacao.o build/entrada.o -lcurses
 
 $(demonstracoes):
