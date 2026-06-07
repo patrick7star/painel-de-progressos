@@ -58,8 +58,8 @@ compila-testes-unitarios: compila-objetos test-progresso teste-led test-monitor
 		-c -o build/test-monitor.o src/monitor.cpp
 
 # --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --
-entrada-obj:
-	g++ -O3 -Oz -g3 -Wall -pedantic -std=gnu++23 \
+obj-entrada:
+	$(COMPILER) -O3 -Oz -g3 -Wall -pedantic -std=gnu++23 \
 		-c -o build/entrada.o src/entrada.cpp
 entrada-test:
 	clang++ -std=c++23 -D__unit_tests__ -g3 -O0 -Wall \
@@ -67,8 +67,8 @@ entrada-test:
 	clang++ -o bin/ut_entrada build/entrada-test.o -lcurses -lc
 
 # --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --
-comunicacao-obj:
-	g++ -Wall -pedantic -std=gnu++23 \
+obj-comunicacao:
+	$(COMPILER) -Wall -pedantic -std=gnu++23 \
 		-c -o build/comunicacao.o src/comunicacao.cpp
 
 comunicacao-test: entrada-obj
@@ -95,22 +95,20 @@ debug: obj-painel-debug
 		build/comunicacao.o			\
 		-lcurses
 
-release: cria-dirs-do-projeto entrada-obj comunicacao-obj
-	@clang++ -Ilib/ -O3 -Oz -Wall							\
+release: cria-dirs-do-projeto obj-entrada obj-comunicacao
+	@$(COMPILER) -Ilib/ -O3 -Oz -Wall							\
 		-c -o build/painel-release.o src/painel.cpp
 	@echo "Objeto painel-release criado."
-	@clang++ -Ilib/ -O3 -Oz -Wall -D__unit_tests__	\
+	@$(COMPILER) -Ilib/ -O3 -Oz -Wall -D__unit_tests__	\
 		-c -o build/main-release.o src/main.cpp
 	@echo "Objeto main-release gerado."
-	@clang++ -Ilib/ -o bin/release	\
+	@$(COMPILER) -Ilib/ -o bin/release	\
 		build/main-release.o				\
 		build/painel-release.o			\
 		build/entrada.o					\
 		build/comunicacao.o				\
 			-lcurses -L ./lib -llegivel
 	@echo "Todos objetos lincados em 'release' e 'painel-de-progressos'."
-	@ln -T bin/release  bin/painel-de-progressos
-	@echo "Um nome melhor dado a tal binário: 'painel-de-progressos'."
 
 # Funciona apenas para um sistema Linux, com um sistema gráfico, que tenha 
 # o 'mate-terminal' versão 1.26.1.
