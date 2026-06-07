@@ -44,7 +44,8 @@ PainelDeProgresso::~PainelDeProgresso(void)
 /* == == == == == == == == == == == == == == == == == == == == == == == == ==
  *                      Construção e Renderização
  * == == == == == == == == == == == == == == == == == == == == == == == == */
-void PainelDeProgresso::desenha_moldura(void) {
+void PainelDeProgresso::desenha_moldura(void) 
+{
 /* Desenha a moldura das janela inicialmente criada. Suas cores, bordas, e
  * os separadores dividindo as seguintes partes. */
    int largura = getmaxx(stdscr);
@@ -76,7 +77,10 @@ void PainelDeProgresso::desenha_entradas(void) {
       item.desenha(janela, linha++);
 }
 
-void PainelDeProgresso::desenha_status(void) {
+extern "C" char* tempo_legivel(double seg);
+
+void PainelDeProgresso::desenha_status(void) 
+{
    using std::chrono::seconds;
    using std::chrono::duration_cast;
 
@@ -87,11 +91,13 @@ void PainelDeProgresso::desenha_status(void) {
    auto comeco = this->comeco;
    auto passados = agora - comeco;
    auto decorrido = duration_cast<seconds>(passados);
+   double decorridof64 = static_cast<double>(decorrido.count());
+   auto decorridocstr = tempo_legivel(decorridof64);
 
    info << "Ativos: ";
    info << this->lista.size();
    info << TAB << "<S-Sair>";
-   info << TAB << decorrido.count() << "seg";
+   info << TAB << decorridocstr;
 
    move(y, 1);
    addstr(info.str().c_str());

@@ -78,22 +78,20 @@ comunicacao-test: entrada-obj
 		-lcurses
 
 obj-painel-debug:
-	@$(COMPILER) -g3 -O0 -Wall -c -o build/painel-debug.o src/painel.cpp
+	@$(COMPILER) -I./lib/include -g3 -O0 -Wall \
+		-c -o build/painel-debug.o src/painel.cpp
 	@echo "Objeto do módulo painel gerado em 'build'."
 # --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --
 debug: obj-painel-debug
-	@$(COMPILER) -D__unit_tests__ -g3 -O0 -Wall \
-		-c -o build/painel-debug.o src/painel.cpp
-	@echo "Objeto do módulo 'painel' compilado."
 	@$(COMPILER) -g3 -O0 -Wall -D__unit_tests__ -D__debug__ \
 		-c -o build/main-debug.o src/main.cpp
 	@echo "Objeto do 'main' compilado em 'build'."
-	$(COMPILER) -O0 -o bin/debug	\
+	$(COMPILER) -I./lib/include -O0 -o bin/debug	\
 		build/main-debug.o			\
 		build/painel-debug.o			\
 		build/entrada.o				\
 		build/comunicacao.o			\
-		-lcurses
+		-lcurses -L./lib/ -llegivel
 
 release: cria-dirs-do-projeto obj-entrada obj-comunicacao
 	@$(COMPILER) -Ilib/ -O3 -Oz -Wall							\
