@@ -71,10 +71,10 @@ obj-comunicacao:
 	$(COMPILER) -Wall -pedantic -std=gnu++23 \
 		-c -o build/comunicacao.o src/comunicacao.cpp
 
-comunicacao-test: entrada-obj
-	clang++ -O0 -g3 -Wall -pedantic -std=gnu++23 -D__unit_tests__ \
+test-comunicacao: obj-entrada
+	g++ -O0 -g3 -Wall -pedantic -std=gnu++23 -D__unit_tests__ \
 		-c -o build/comunicacao-test.o src/comunicacao.cpp
-	clang++ -o bin/ut_comunicacao build/comunicacao-test.o build/entrada.o \
+	g++ -o bin/tests/ut-comunicacao build/comunicacao-test.o build/entrada.o \
 		-lcurses
 
 obj-painel-debug:

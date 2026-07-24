@@ -6,9 +6,12 @@
 #include <iostream>
 #include <exception>
 #include <system_error>
+#include <filesystem>
+#include <sstream>
 // Biblioteca padrão do C:
 #include <cerrno>
 #include <cstring>
+#include <cassert>
 // API do sistema:
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -16,6 +19,8 @@
 
 using namespace std;
 using namespace chrono;
+using path = filesystem::path;
+
 // Valores globais utilizados abaixo:
 const string PATH{"./tubulação"};
 constexpr int Failed = -1;
@@ -27,23 +32,10 @@ constexpr auto VALIDADE_ENTRADA_ESGOTADA = seconds{17};
 #define Ig ignore
 
 
-static void cria_tubulacao(void) {
-/* Tenta criar o 'named pipe' se não existir. Se já houver, apenas uma 
- * mensagem informando o error será emitida. */
-   constexpr int MODE = 0600;
-   auto code = make_error_code(errc::file_exists);
-
-   if (mkfifo(PATH.c_str(), MODE) == Failed) {
-      switch (errno) {
-         case EEXIST:
-            throw system_error(code);
-            break;
-         default:
-            cerr << "Erro desconhecido até o momento.\n";
-            std::terminate();
-      }
-   }
-}
+// Declaração das funções utilizadas abaixo:
+static path caminho_do_projeto(void);
+static path caminho_da_tubulacao_principal(void);
+static void cria_tubulacao(void); 
 
 /* == == == == == == == == == == == == == == == == == == == == == == == == ==
  *                        Servidor(Envia as Entradas)
@@ -163,6 +155,9 @@ void Servidor::remove_entradas_expiradas(void) {
 }
 
 Servidor::Servidor(void) {
+   auto pipeline = caminho_da_tubulacao_principal();
+   auto caminhostr = pipeline.c_str();
+
    try 
       { cria_tubulacao(); } 
    catch(const system_error& excecao) { 
@@ -175,7 +170,7 @@ Servidor::Servidor(void) {
    // Começa a contar.
    this->inicio = Clock::now();
    // Abre o 'file descriptor' emissor de dados.
-   this->tubulacao = open(PATH.c_str(), O_RDWR);
+   this->tubulacao = open(caminhostr, O_RDWR);
 
    if (this->tubulacao == Failed) {
       char* errostr = strerror(errno);
@@ -197,6 +192,9 @@ Servidor::Servidor(void) {
 
 Servidor::Servidor(Entrada* pointer) {
 // Construtor que já vem com uma 'entrada' interna.
+   auto pipeline = caminho_da_tubulacao_principal();
+   auto caminhostr = pipeline.c_str();
+
    try 
       { cria_tubulacao(); } 
    catch(const system_error& excecao) { 
@@ -209,7 +207,7 @@ Servidor::Servidor(Entrada* pointer) {
    // Começa a contar.
    this->inicio = Clock::now();
    // Abre o 'file descriptor' emissor de dados.
-   this->tubulacao = open(PATH.c_str(), O_RDWR);
+   this->tubulacao = open(caminhostr, O_RDWR);
 
    if (this->tubulacao == Failed) {
       char* errostr = strerror(errno);
@@ -349,7 +347,8 @@ Cliente::Cliente(vector<Entrada>& lista): colecao(lista) {
 /* O construtor deve receber uma lista, pra que se aloque todas entradas
  * externas que foram recebidas, mesmo que ela esteja incialmente vázia. 
  */
-   auto caminho = PATH.c_str();
+   auto pipeline = caminho_da_tubulacao_principal();
+   auto caminho = pipeline.c_str();
 
    try {
       cria_tubulacao();
@@ -466,16 +465,64 @@ void Cliente::remocao_de_entradas_expiradas(void) {
 int Cliente::quantidade(void) const
    { return static_cast<int>(this->expiradas.size()); }
 
+
+// Retorna o caminho onde todo este projeto está localizado.
+static path caminho_do_projeto(void)
+{
+   stringstream formatacao;
+   const string PROJETO = "painel-de-progressos";
+   int pid = getpid();
+   path output;
+
+   formatacao << "/proc" << "/" << pid << "/exe";
+   output = path(formatacao.str());
+
+   assert(filesystem::is_symlink(output));
+   output = filesystem::read_symlink(output);
+
+   while (output.filename() != PROJETO)
+      output = output.parent_path();
+   return output;
+}
+
+// Retorna o caminho especificamente do 'named pipe' onde acontece a 
+// troca de dados principal.
+static path caminho_da_tubulacao_principal(void)
+   { return caminho_do_projeto() / "data" /  PATH; }
+
+static void cria_tubulacao(void) {
+/* Tenta criar o 'named pipe' se não existir. Se já houver, apenas uma 
+ * mensagem informando o error será emitida. */
+   constexpr int MODE = 0600;
+   auto code = make_error_code(errc::file_exists);
+   auto pipeline = caminho_da_tubulacao_principal();
+   auto caminhostr = pipeline.c_str();
+
+   if (mkfifo(caminhostr, MODE) == Failed) {
+      switch (errno) {
+         case EEXIST:
+            throw system_error(code);
+            break;
+         default:
+            cerr << "Erro desconhecido até o momento.\n";
+            std::terminate();
+      }
+   }
+}
+
 #ifdef __linux__
 #ifdef __unit_tests__
 /* == == == == == == == == == == == == == == == == == == == == == == == == ==
  *                        Testes Unitários
  * == == == == == == == == == == == == == == == == == == == == == == == == */
 #include <thread>
+#define UNIT_TEST static void
+#define BOOLTRANS(X) (X ? "true": "false")
 
 using namespace std::this_thread;
 
-int main(void) {
+UNIT_TEST testes_anteriores(void) 
+{
    auto a = Entrada("Abacaxi", 25, 100);
    auto peso = 0;
    auto b = Entrada("Morango", 3, 150);
@@ -502,6 +549,51 @@ int main(void) {
 
    for (auto& entry: lista)
       cout << entry << endl;
+}
+
+UNIT_TEST verificando_a_constante_FILE(void)
+{
+   cout << "Conteúdo: \'" << __FILE__ << "\'\n";
+   cout << "Parece não ser o absoluto.";
+}
+
+UNIT_TEST caminho_absoluto_do_namedpipe(void)
+{
+   auto input = filesystem::absolute(PATH);
+   auto output = filesystem::exists(input);
+   auto erelativo = filesystem::exists(__FILE__);
+   auto input_a = filesystem::absolute(__FILE__);
+   auto eabsoluto = filesystem::exists(input_a);
+
+   cout << "Construindo caminho ==> " << input << endl
+        << "Existe? " << BOOLTRANS(output) << endl 
+        << "Relativo("<< __FILE__ << ")?" << BOOLTRANS(erelativo) << endl
+        << "Absoluto(" << input_a << ")? " << BOOLTRANS(eabsoluto) << endl;
+
+   auto pid = getpid();
+   auto fmt = stringstream();
+
+   fmt << "/proc" << "/" << pid << "/exe";
+   auto pathname = path(fmt.str());
+   auto linque = filesystem::read_symlink(pathname);
+   auto eslink = filesystem::is_symlink(pathname);
+
+   cout << "PID: " << pid << endl
+         << "Caminho do link simbólico: " << pathname << endl
+         << "Caminh do executável: " << linque << endl
+         << "Linque simbólico? " << BOOLTRANS(eslink) << endl;
+}
+
+UNIT_TEST computacao_do_caminho_do_projeto(void)
+{
+   cout << "Caminho(output): " << caminho_do_projeto() << endl;
+}
+
+int main(void) {
+   // testes_anteriores();
+   verificando_a_constante_FILE();
+   caminho_absoluto_do_namedpipe();
+   computacao_do_caminho_do_projeto();
 }
 #endif
 #endif
