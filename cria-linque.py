@@ -51,7 +51,28 @@ def cria_linques() -> None:
       assert (caminho.exists(follow_symlinks=False))
       print("Linque criado com sucesso.")
 
+def cria_linque_do_link_em_ingles() -> None:
+   NOME_EN = "panel-progress"
+   BASE = getenv("LINKS")
+   target = Path(BASE).joinpath(NOME)
+   novo = Path(BASE).joinpath(NOME_EN)
+
+   if target.exists():
+      print("Como existe {}, criando algo dele ...".format(NOME))
+
+      try:
+         novo.symlink_to(target)
+      except FileExistsError:
+         print("Já existe um linque com o nome em Inglês.")
+      else:
+         print("Linque(en_US) criado com sucesso.")
+      finally:
+         pass
+   else:
+      print("Não existe um {}".format(NOME), file=sys.stderr)
+
 
 print("Repositório dos linques: '{}'".format(getenv("LINKS")))
 verificacao_basica()
 cria_linques()
+cria_linque_do_link_em_ingles()
