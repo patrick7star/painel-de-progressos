@@ -16,7 +16,8 @@ static void configura_janela(void) {
    nodelay(stdscr, true);
 }
 
-static void inicia_paleta_de_cores(void) {
+static void inicia_paleta_de_cores(void) 
+{
    init_pair(100, COLOR_BLACK,   -1);
    init_pair( 99, COLOR_RED,     -1);
    init_pair( 98, COLOR_GREEN,   -1);
@@ -25,6 +26,11 @@ static void inicia_paleta_de_cores(void) {
    init_pair( 95, COLOR_MAGENTA, -1);
    init_pair( 94, COLOR_CYAN,    -1);
    init_pair( 93, COLOR_WHITE,   -1);
+   // Papeis de paredes:
+   init_pair(90, COLOR_BLACK, COLOR_YELLOW);
+   init_pair(89, COLOR_BLACK, COLOR_RED);
+   init_pair(88, COLOR_BLACK, COLOR_GREEN);
+   init_pair(87, COLOR_BLACK, COLOR_WHITE);
 }
 
 PainelDeProgresso::PainelDeProgresso(void) {
@@ -65,7 +71,9 @@ void PainelDeProgresso::desenha_moldura(void)
    addch(ACS_LRCORNER);
    // Escrevendo o título em sí ...
    move(1, (largura - recuo) / 2);
+   color_set(94, NULL);
    addstr(TITULO.c_str());
+   color_set(0, NULL);
 }
 
 void PainelDeProgresso::desenha_entradas(void) {
@@ -85,8 +93,9 @@ void PainelDeProgresso::desenha_status(void)
    using std::chrono::duration_cast;
 
    int y = getmaxy(stdscr) - 2;
+   int x = getmaxx(stdscr);
    ostringstream info;
-   constexpr auto TAB = "  ";
+   const string TAB("  ");
    auto agora = Clock::now();
    auto comeco = this->comeco;
    auto passados = agora - comeco;
@@ -94,13 +103,26 @@ void PainelDeProgresso::desenha_status(void)
    double decorridof64 = static_cast<double>(decorrido.count());
    auto decorridocstr = tempo_legivel(decorridof64);
 
-   info << "Ativos: ";
-   info << this->lista.size();
-   info << TAB << "<S-Sair>";
-   info << TAB << decorridocstr;
+   stringstream fmt;
+   // Estimativa de caractéres, mais os números do temporizador.
+   const auto CONTAGEM = 23 + 4;
+   auto offset = (6 * TAB.size() + CONTAGEM);
 
-   move(y, 1);
-   addstr(info.str().c_str());
+   move(y, x / 2 - offset / 2);
+   fmt << TAB << "Ativos: " << this->lista.size() << TAB;
+   color_set(90, NULL);
+   addstr(fmt.str().c_str());
+   fmt.str("");
+
+   fmt << TAB << "<S> sair" << TAB;
+   color_set(89, NULL);
+   addstr(fmt.str().c_str());
+   fmt.str("");
+
+   fmt << TAB << decorridocstr << TAB;
+   color_set(88, NULL);
+   addstr(fmt.str().c_str());
+   color_set(0, NULL);
 }
 
 void PainelDeProgresso::renderiza(void) {
