@@ -7,13 +7,23 @@
 #include <thread>
 #include <iostream>
 #include <chrono>
-#include "../comunicacao.hpp"
+#include "comunicacao.hpp"
 // GNU library of POSIX:
 #include <sys/wait.h>
 #include <signal.h>
 
 #define Ig std::ignore
 
+static void info_compactada_da_entrada(Entrada& obj); 
+static void transmissor_infinito(Entrada& objeto);
+static void lancamento_de_entradas_por_varios_processos(void); 
+static void transmissao_de_entradas_limitadas
+  (Servidor& mensageiro, std::array<Entrada, 5>& In);
+
+int main(void)
+{
+   lancamento_de_entradas_por_varios_processos();
+}
 
 void info_compactada_da_entrada(Entrada& obj) {
    using Cloque = std::chrono::high_resolution_clock;
@@ -156,8 +166,3 @@ void lancamento_de_entradas_por_unico_processo(void) {
    std::cout << "Tudo foi terminado com sucesso.\n";
 }
 
-int main(void)
-{
-   lancamento_de_entradas_por_unico_processo();
-   // lancamento_de_entradas_por_varios_processos();
-}
