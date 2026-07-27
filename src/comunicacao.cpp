@@ -24,6 +24,7 @@ using path = filesystem::path;
 // Valores globais utilizados abaixo:
 const string PATH{"./tubulação"};
 constexpr int Failed = -1;
+constexpr int Okay = 0;
 // Valores que tanto, o Servidor, como o Cliente, se comunicam.
 constexpr auto RITMO_DE_ENTREGA = 200ms;
 constexpr auto RITMO_DE_RECEPTACAO = 100ms;
@@ -465,6 +466,118 @@ void Cliente::remocao_de_entradas_expiradas(void) {
 int Cliente::quantidade(void) const
    { return static_cast<int>(this->expiradas.size()); }
 
+/* == == == == == == == == == == == == == == == == == == == == == == == == ===
+ *                   Servidor MQ(Message Queue)
+
+ * Envia por rota alternativa. Uma mais comum e geral do que o pipe dentro do
+ * projeto.
+ * == == == == == == == == == == == == == == == == == == == == == == == == ==*/
+// Nome da via da message-queue.
+const string_view NOME_TUBULACAO_MQ = "/tubulação";
+
+auto cria_tubulacao_mq(void) -> mqd_t
+{
+   struct mq_attr atributos;
+   int flags = O_CREAT | O_WRONLY;
+   int permissoes = 0600;
+
+   // Configurando atributos ...
+   atributos.mq_flags   = 0;
+   atributos.mq_maxmsg  = 100;
+   atributos.mq_msgsize = MAX_SERIAL;
+   atributos.mq_curmsgs = 0;
+
+   return  mq_open(NOME_TUBULACAO_MQ.data(), flags, permissoes, &atributos);
+}
+
+ServidorMessageQueue::ServidorMessageQueue(Entrada* pointer) {
+// Construtor que já vem com uma 'entrada' interna.
+   this->caminho = path(NOME_TUBULACAO_MQ.data());
+   this->tubulacao = cria_tubulacao_mq();
+   // Começa a contar.
+   this->inicio = Clock::now();
+
+   if (this->tubulacao == Failed) 
+   {
+      char* errostr = strerror(errno);
+      auto msg_erro = string(errostr);
+      auto tipo = errc::io_error;
+      auto code = make_error_code(tipo);
+
+      throw system_error(code, msg_erro);
+   }
+
+   if (this->adiciona(pointer))
+      cout << "ServidorMQ com 'Entrada' criada com sucesso.\n";
+   else
+      cout << "Apenas o servidor(message-queue) foi possível criar.\n";
+}
+
+ServidorMessageQueue::ServidorMessageQueue(void) 
+{
+   this->caminho = path(NOME_TUBULACAO_MQ.data());
+   this->tubulacao = cria_tubulacao_mq();
+
+   if (this->tubulacao == Failed) 
+   {
+      char* errostr = strerror(errno);
+      auto msg_erro = string(errostr);
+      auto tipo = errc::io_error;
+      auto code = make_error_code(tipo);
+
+      throw system_error(code, msg_erro);
+   }
+
+   // Começa a contar.
+   this->inicio = Clock::now();
+}
+
+ServidorMessageQueue::~ServidorMessageQueue(void) 
+{
+   if (mq_close(this->tubulacao) == Okay)
+   {
+      cout << "Mensageiro fechado com sucesso.\n";
+      // mq_unlink(NOME_TUBULACAO_MQ.data());
+   }
+}
+
+void ServidorMessageQueue::enviar(void) {
+/* Envia o 'status' de cada 'entrada'. Como elas estão numa fila, o processo
+ * pra realizar isso é um pouco, vamos dizer, "anti-multithreading". Ele
+ * remove uma 'entrada', transmite os dados dela, e coloca novamente na 
+ * fila. */
+   auto& fila = this->fila;
+   auto quantia = fila.size();
+
+   while (quantia-- > 0) 
+   {
+      auto entryref = fila.front();
+   
+      if (this->pronto_pra_envio()) {
+         auto obj = *entryref;
+
+         this->envia_uma_entrada(obj); 
+         fila.pop();
+         fila.push(entryref);
+      }
+   }
+   this->remove_entradas_expiradas();
+}
+
+void ServidorMessageQueue::envia_uma_entrada(Entrada& input)
+{
+   auto tubo = this->tubulacao;
+   const auto QTD = MAX_SERIAL;
+   auto dados = input.serializa();
+   auto prioridade = 0;
+   auto pointer = dados.data();
+   const char* data = reinterpret_cast<char*>(pointer);
+
+   mq_send(tubo, data, QTD, prioridade);
+
+   // Recomeça a contagem.
+   this->inicio = Clock::now();
+}
 
 // Retorna o caminho onde todo este projeto está localizado.
 static path caminho_do_projeto(void)

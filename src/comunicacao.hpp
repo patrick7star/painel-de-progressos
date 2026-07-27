@@ -5,6 +5,9 @@
 #include <chrono>
 #include <queue>
 #include <vector>
+#include <filesystem>
+// Biblioteca do Unix:
+#include <mqueue.h>
 
 
 class Servidor {
@@ -14,22 +17,25 @@ class Servidor {
  * acumulado no total deste envio.
  */
 
- using Queue = std::queue<Entrada*>;
- using Clock = std::chrono::steady_clock;
- using TimePoint = Clock::time_point;
+ protected:
+   using Clock = std::chrono::steady_clock;
+   using Queue = std::queue<Entrada*>;
+   using TimePoint = Clock::time_point;
 
- private:
-   // 'file descriptor' do 'named pipe', onde os dados são enviados.
-   int tubulacao;
    // Referência da 'entrada' que sempre transmite seu sinal.
    Queue fila;   
    // Cronômetro que registra o tempo necessário prá próxima remessa.
    mutable TimePoint inicio;
 
    bool pronto_pra_envio(void) const;
+   void remove_entradas_expiradas(void);
+
+ private:
+   // 'file descriptor' do 'named pipe', onde os dados são enviados.
+   int tubulacao;
+
    void envia_uma_entrada(Entrada& obj) const;
    bool entrada_pertencente(Entrada& obj);
-   void remove_entradas_expiradas(void);
 
  public:
    // Todos construtores que existem.
@@ -50,6 +56,29 @@ class Servidor {
     * do progresso de uma, ela apenas expira, e é removida da fila interna
     * de transmissão. */
    int quantidade(void) const;
+};
+
+
+class ServidorMessageQueue: public Servidor 
+{
+ using ServidorMQ = ServidorMessageQueue;
+ using path = std::filesystem::path;
+
+ private:
+   // Caminho da tubulação:
+   path caminho;
+   mqd_t tubulacao;
+
+   void envia_uma_entrada(Entrada& input);
+
+ public:
+   // Métodos construtores:
+   ServidorMessageQueue  (void); 
+   ServidorMessageQueue  (Entrada* pointer);
+   ~ServidorMessageQueue (void); 
+
+   // Envia todas as 'entradas' via uma named message-queue.
+   void enviar(void); 
 };
 
 
