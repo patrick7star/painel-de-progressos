@@ -4,35 +4,13 @@
 
 using namespace std;
 
+static void configura_janela(void); 
+static void inicia_paleta_de_cores(void); 
+extern "C" char* tempo_legivel(double seg);
+
 /* == == == == == == == == == == == == == == == == == == == == == == == == ==
  *                Construtores e Desconstrutor do Painel
  * == == == == == == == == == == == == == == == == == == == == == == == == */
-static void configura_janela(void) {
-   start_color();
-   keypad(stdscr, true);
-   nonl();
-   noecho();
-   use_default_colors();
-   nodelay(stdscr, true);
-}
-
-static void inicia_paleta_de_cores(void) 
-{
-   init_pair(100, COLOR_BLACK,   -1);
-   init_pair( 99, COLOR_RED,     -1);
-   init_pair( 98, COLOR_GREEN,   -1);
-   init_pair( 97, COLOR_YELLOW,  -1);
-   init_pair( 96, COLOR_BLUE,    -1);
-   init_pair( 95, COLOR_MAGENTA, -1);
-   init_pair( 94, COLOR_CYAN,    -1);
-   init_pair( 93, COLOR_WHITE,   -1);
-   // Papeis de paredes:
-   init_pair(90, COLOR_BLACK, COLOR_YELLOW);
-   init_pair(89, COLOR_BLACK, COLOR_RED);
-   init_pair(88, COLOR_BLACK, COLOR_GREEN);
-   init_pair(87, COLOR_BLACK, COLOR_WHITE);
-}
-
 PainelDeProgresso::PainelDeProgresso(void) {
 /* Cria um 'painel', então configura várias propriedades referentes a
  * ela. Inclusive termina por realizar a primeira construção, então uma
@@ -85,8 +63,6 @@ void PainelDeProgresso::desenha_entradas(void) {
       item.desenha(janela, linha++);
 }
 
-extern "C" char* tempo_legivel(double seg);
-
 void PainelDeProgresso::desenha_status(void) 
 {
    using std::chrono::seconds;
@@ -108,21 +84,23 @@ void PainelDeProgresso::desenha_status(void)
    const auto CONTAGEM = 23 + 4;
    auto offset = (6 * TAB.size() + CONTAGEM);
 
+   attron(COLOR_PAIR(90) | A_NORMAL);
    move(y, x / 2 - offset / 2);
    fmt << TAB << "Ativos: " << this->lista.size() << TAB;
-   color_set(90, NULL);
    addstr(fmt.str().c_str());
    fmt.str("");
+   attroff(COLOR_PAIR(90) | A_NORMAL);
 
    fmt << TAB << "<S> sair" << TAB;
-   color_set(89, NULL);
+   attron(COLOR_PAIR(89) | A_NORMAL | A_UNDERLINE);
    addstr(fmt.str().c_str());
+   attroff(COLOR_PAIR(89) | A_NORMAL | A_UNDERLINE);
    fmt.str("");
 
    fmt << TAB << decorridocstr << TAB;
-   color_set(88, NULL);
+   attron(COLOR_PAIR(88) | A_NORMAL);
    addstr(fmt.str().c_str());
-   color_set(0, NULL);
+   attroff(COLOR_PAIR(88) | A_NORMAL);
 }
 
 void PainelDeProgresso::renderiza(void) {
@@ -136,16 +114,9 @@ void PainelDeProgresso::renderiza(void) {
    refresh();
 }
 
-#ifdef __unit_tests__
-/* == == == == == == == == == == == == == == == == == == == == == == == == ==
- *                      Funções e Métodos pra Debuggin'
- * == == == == == == == == == == == == == == == == == == == == == == == == */
-#endif
-
 /* == == == == == == == == == == == == == == == == == == == == == == == == ==
  *                            Métodos privados
  * == == == == == == == == == == == == == == == == == == == == == == == == */
-
 bool PainelDeProgresso::todos_progressos_finalizados(void) {
 /* Diz se todos os 'processos' estão finalizados, se algum não estiver, 
  * nega a proposição que vem no nome da função. Basicamente é assim que é 
@@ -168,3 +139,36 @@ bool PainelDeProgresso::permissao_pra_rodar(void)
 
    return (ha_ainda_entradas || tempo_dado_nao_esgotado);
 }
+
+static void configura_janela(void) {
+   start_color();
+   keypad(stdscr, true);
+   nonl();
+   noecho();
+   use_default_colors();
+   nodelay(stdscr, true);
+}
+
+static void inicia_paleta_de_cores(void) 
+{
+   init_pair(100, COLOR_BLACK,   -1);
+   init_pair( 99, COLOR_RED,     -1);
+   init_pair( 98, COLOR_GREEN,   -1);
+   init_pair( 97, COLOR_YELLOW,  -1);
+   init_pair( 96, COLOR_BLUE,    -1);
+   init_pair( 95, COLOR_MAGENTA, -1);
+   init_pair( 94, COLOR_CYAN,    -1);
+   init_pair( 93, COLOR_WHITE,   -1);
+   // Papeis de paredes:
+   init_pair(90, COLOR_BLACK, COLOR_YELLOW);
+   init_pair(89, COLOR_BLACK, COLOR_RED);
+   init_pair(88, COLOR_BLACK, COLOR_GREEN);
+   init_pair(87, COLOR_BLACK, COLOR_WHITE);
+}
+
+#ifdef __unit_tests__
+/* == == == == == == == == == == == == == == == == == == == == == == == == ==
+ *                      Funções e Métodos pra Debuggin'
+ * == == == == == == == == == == == == == == == == == == == == == == == == */
+#endif
+

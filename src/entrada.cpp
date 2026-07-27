@@ -179,56 +179,107 @@ void Entrada::taxa_de_crescimento_b(void) {
       this->atual++;
 }
 
+static void desenha_progresso_colorido(float p)
+{
+// Desenha um progresso colorido onde o cursor já está na janela.
+   // Comprimento da barra de progresso.
+   const char BARRA = 'o';
+   const char VAZIO = '.';
+   // Total desta barra que foi carregado.
+   int QUANTIA = (int)(COMPRIMENTO * p);
+   int cor = 0, n = 0;
+   const char DELIMITADORES[3] = "[]";
+   stringstream fmt;
+
+   /* Cor definida no nível do atual progresso. As cores estão atribuidas
+    * as seguintes porcentagens. 
+    *       85% para cima, fica tudo azul.
+    *       65% para cima, fica tudo verde.
+    *       25% para cima, fica tudo amarelo.
+    *       25 prá baxio, o restante, fica em vermelho.
+    */
+   if      (p >= 0.85)              cor = 96;
+   else if (p >= 0.65 && p < 0.85)  cor = 98;
+   else if (p >= 0.25 && p < 0.65)  cor = 97;
+   else                             cor = 99;
+
+   /* Criando uma formatação de barra de progresso em sí. */
+   // Parte branca bem destacada para os delimitadores.
+   attron(COLOR_PAIR(93) | A_BOLD);
+   addch(DELIMITADORES[0]);
+   attroff(COLOR_PAIR(93) | A_BOLD);
+   
+   for (n = 1; n < COMPRIMENTO; n++) 
+   {
+      if (n < QUANTIA) {
+         attron(COLOR_PAIR(cor) | A_BOLD);
+         addch(BARRA);
+         attroff(COLOR_PAIR(cor) | A_BOLD);
+      } else {
+         attron(COLOR_PAIR(93) | A_NORMAL);
+         addch(VAZIO);
+         attroff(COLOR_PAIR(93) | A_NORMAL);
+      }
+   }
+   // O demilitador de fechamento tem um branco bem forte.
+   attron(A_BOLD | COLOR_PAIR(93));
+   addch(DELIMITADORES[1]);
+   attroff(A_BOLD | COLOR_PAIR(93));
+   // Percentual é pintado conforme ...
+   fmt.precision(3);
+   fmt.width(5);
+   fmt << p * 100.0 << '%'; 
+   attron(COLOR_PAIR(93) | A_NORMAL);
+   addstr(fmt.str().c_str());
+   attroff(COLOR_PAIR(93) | A_NORMAL);
+}
+
+static void desenha_contadores_colorido(size_t a, size_t t)
+{
+   int total_digitos = digitos_necessarios(t);
+   int atributos = COLOR_PAIR(93) | A_UNDERLINE | A_BOLD;
+   ostringstream format;
+   
+   attron(atributos);
+   format.width(total_digitos);
+   format << (int)a;
+   addstr(format.str().c_str());
+
+   format.str("");
+   format << '/';
+   addstr(format.str().c_str());
+
+   format.str("");
+   format << (int)t;
+   addstr(format.str().c_str());
+   attroff(atributos);
+   addstr(ESPACO.c_str());
+}
+
+static void desenha_rotulo_colorido(string& rotulo)
+{
+   attron(COLOR_PAIR(97) | A_BOLD);
+   addstr(rotulo.c_str());
+   attroff(COLOR_PAIR(97) | A_BOLD);
+}
+
 void Entrada::desenha(WINDOW* janela, int linha)
 {
-// Constrói a formatação do ítem na janela do ncurses.
-   ostringstream fmt_a, fmt_bar, fmt_label;
-   // Comprimento da barra de progresso.
-   const int COMPRIMENTO = 28;
-   // Total desta barra que foi carregado.
-   int QUANTIA = (int)(COMPRIMENTO * this->percentual());
-   // int total_digitos = (int)(floor(log10(this->total)) + 1);
    int total_digitos = digitos_necessarios(this->total);
-
-   // Criando a formatação da parte que diz sobre a quantia total/e a atual.
-   fmt_a.width(total_digitos);
-   fmt_a << (int)this->atual;
-   fmt_a << "/";
-   fmt_a << (int)this->total; 
-   fmt_a << ESPACO.c_str();
-   /* Criando uma formatação de barra de progresso em sí. */
-   fmt_bar << '[';
-   for (int n = 1; n < COMPRIMENTO; n++) {
-      if (n < QUANTIA)
-         fmt_bar << 'o';
-      else
-         fmt_bar << '.';
-   }
-   fmt_bar << ']';
-   fmt_bar.precision(3);
-   fmt_bar.width(5);
-   fmt_bar << this->percentual() * 100.0; 
-   fmt_bar << '%';
-   // Rótulo. Tenta encurtar se for longo demais.
-   if (this->rotulo.length() > 50) {
-      int count = 1;
-      for (char& letra: this->rotulo) {
-         if (count++ > 50)
-            break;
-         fmt_label << letra;
-      }
-      fmt_label << ESPACO;
-      fmt_label << "...";
-      fmt_label << ESPACO;
-   } else 
-      fmt_label << this->rotulo;
+   int contadores_width = 2 * total_digitos + ESPACO.length();
+   int progresso_width = COMPRIMENTO + 2;
+   /* Os cincos contando o máximo de 3 digitos(inclui a vírgula), e um dígito 
+    * da fração, então o adicional referente ao símbolo de percentual. */
+   int percentual_width = 3 + 2 + 1;
+   int largura = contadores_width + progresso_width + percentual_width;
+   const int MARGEM = 3;
 
    // Desenha tudo formatado acima na telinha do ncurses.
    move(linha, 2);
-   addstr(fmt_label.str().c_str());
-   move(linha, COLS - (fmt_a.str().length() + fmt_bar.str().length() + 2));
-   addstr(fmt_a.str().c_str());
-   addstr(fmt_bar.str().c_str());
+   desenha_rotulo_colorido(this->rotulo);
+   move(linha, COLS - largura - MARGEM);
+   desenha_contadores_colorido(this->atual, this->total);
+   desenha_progresso_colorido(this->percentual());
 }
 
 void Entrada::registra_o_termimo(void) {

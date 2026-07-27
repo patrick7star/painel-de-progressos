@@ -116,12 +116,18 @@ run-release:
 # --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --
 demonstracoes = verificador_de_injecao injetor_de_entradas
 
-servidor_injetor:
-	$(COMPILER) -o bin/demos/$@ src/demo/$@.cpp \
-		build/comunicacao.o build/entrada.o -lcurses
+servidor_injetor: obj-comunicacao
+	$(COMPILER) -I./src/ -o bin/demos/$@ src/demo/$@.cpp \
+		build/comunicacao.o build/entrada.o -lrt -lc -lcurses
 cliente-receptor:
 	$(COMPILER) -o bin/demos/$@ src/demo/$@.cpp \
 		build/comunicacao.o build/entrada.o -lcurses
+cliente-via-mqueue:
+	g++ -std=c++20 -I./src/ -O0 -o \
+		bin/demos/cliente-via-mqueue \
+		src/demo/cliente-via-mqueue.cpp \
+		build/entrada.o \
+	-lrt -lc -lcurses
 
 $(demonstracoes):
 	clang++ -o bin/$@ src/demo/$@.cpp src/entrada.cpp -lcurses
